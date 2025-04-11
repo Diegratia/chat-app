@@ -10,8 +10,8 @@ const {
 } = require("./rabbitmq");
 const app = express();
 app.use(express.json());
+app.use(express.static("public"));
 
-//otp simpan di session
 const otpStore = new Map();
 const transporter = nodemailer.createTransport(emailConfig);
 
@@ -20,61 +20,51 @@ function generateOTP() {
 }
 
 // Inisialisasi RabbitMQ
-connectRabbitMQ(() => {
-  console.log("RabbitMQ siap digunakan");
-});
+connectRabbitMQ()
+  .then(() => {
+    console.log("RabbitMQ siap digunakan");
+  })
+  .catch((err) => {
+    console.error("Gagal connect RabbitMQ:", err);
+  });
 
 app.post("/customer", async (req, res) => {
   const { nama, email, no_hp, umur, topic } = req.body;
 
-  if (!nama || !email || !no_hp || !umur || !topic) {
-    return res.status(400).json({ message: "Semua field harus diisi!" });
-  }
-
   try {
     const db = await getConnection();
-
-    // cek verfied email
     const [verifiedCheck] = await db.query(
       "SELECT is_verified FROM customers WHERE email = ? AND is_verified = TRUE LIMIT 1",
       [email]
     );
 
     if (verifiedCheck.length > 0) {
-      //kalau sudah verfied langsung input entri baru
-      const roomName = `room_${Date.now()}`; // ini nanti untuk room chat
+      const roomName = `room_${Date.now()}`;
       await db.query("INSERT INTO rooms (room_name) VALUES (?)", [roomName]);
       await db.query(
         "INSERT INTO customers (nama, email, no_hp, umur, topic, room_name, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?)",
         [nama, email, no_hp, umur, topic, roomName, true]
       );
-      subscribeToRoom(roomName); // subs ke rum baru
-      await db.end();
+      subscribeToRoom(roomName);
       await db.end();
       return res
         .status(201)
         .json({ message: "Keluhan dicatat!", room_name: roomName });
     }
 
-    // if verified false, req otp
     const otp = generateOTP();
-    otpStore.set(email, {
-      otp,
-      data: { nama, email, no_hp, umur, topic },
-    });
+    otpStore.set(email, { otp, data: { nama, email, no_hp, umur, topic } });
 
     const mailOptions = {
       from: emailConfig.auth.user,
       to: email,
       subject: "OTP Code",
-      text: `Your OTP code are ${otp}.`,
+      text: `Your OTP code is ${otp}.`,
     };
 
     await transporter.sendMail(mailOptions);
     await db.end();
-    res.status(200).json({
-      message: "Cek email untuk OTP.",
-    });
+    res.status(200).json({ message: "Cek email untuk OTP." });
   } catch (error) {
     console.error("Gagal kirim OTP:", error);
     res.status(500).json({ message: "Gagal kirim OTP" });
@@ -90,27 +80,26 @@ app.post("/verify-otp", async (req, res) => {
   }
 
   const { nama, no_hp, umur, topic } = storedData.data;
-  const roomName = `room_${Date.now()}`; // ini nanti untuk room chat
+  const roomName = `room_${Date.now()}`;
 
   try {
     const db = await getConnection();
-    // masukan entri baru dengan is_verfied true
+    await db.query("INSERT INTO rooms (room_name) VALUES (?)", [roomName]);
     await db.query(
       "INSERT INTO customers (nama, email, no_hp, umur, topic, room_name, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?)",
       [nama, email, no_hp, umur, topic, roomName, true]
     );
-
-    subscribeToRoom(roomName); // subs ke rum baru
+    subscribeToRoom(roomName);
     otpStore.delete(email);
     await db.end();
 
     res.status(201).json({
-      message: "Berhasil simpan dan verfikasi",
+      message: "Berhasil simpan dan verifikasi",
       data: { nama, email, no_hp, umur, topic, room_name: roomName },
     });
   } catch (error) {
-    console.error("Gagal Simpan data:", error);
-    res.status(500).json({ message: "Gagal Simpan data" });
+    console.error("Gagal simpan data:", error);
+    res.status(500).json({ message: "Gagal simpan data" });
   }
 });
 

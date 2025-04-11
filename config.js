@@ -2,7 +2,7 @@ module.exports = {
   dbConfig: {
     host: "localhost",
     user: "root",
-    password: "password",
+    password: "",
     database: "chat_app",
   },
   port: "3000",
