@@ -2,8 +2,13 @@ const express = require("express");
 const { initializeDatabase, getConnection } = require("./database");
 const { port, emailConfig } = require("./config");
 const nodemailer = require("nodemailer");
+const {
+  connectRabbitMQ,
+  subscribeToRoom,
+  publishToRoom,
+  getMessages,
+} = require("./rabbitmq");
 const app = express();
-
 app.use(express.json());
 
 //otp simpan di session
@@ -14,21 +19,15 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-app.use(bodyParser.json({ limit: "50mb" }));
-app.post("/send", function (req, res) {
-  const rabbit = new Send().execute(req.body);
-
-  res.json({
-    status: "OKE",
-    statusCode: 201,
-    message: "Message success send to rabbitmq server.",
-  });
+// Inisialisasi RabbitMQ
+connectRabbitMQ(() => {
+  console.log("RabbitMQ siap digunakan");
 });
 
 app.post("/customer", async (req, res) => {
-  const { nama, email, no_hp, umur, topic_keluhan } = req.body;
+  const { nama, email, no_hp, umur, topic } = req.body;
 
-  if (!nama || !email || !no_hp || !umur || !topic_keluhan) {
+  if (!nama || !email || !no_hp || !umur || !topic) {
     return res.status(400).json({ message: "Semua field harus diisi!" });
   }
 
@@ -43,21 +42,25 @@ app.post("/customer", async (req, res) => {
 
     if (verifiedCheck.length > 0) {
       //kalau sudah verfied langsung input entri baru
+      const roomName = `room_${Date.now()}`; // ini nanti untuk room chat
+      await db.query("INSERT INTO rooms (room_name) VALUES (?)", [roomName]);
       await db.query(
-        "INSERT INTO customers (nama, email, no_hp, umur, topic_keluhan, is_verified) VALUES (?, ?, ?, ?, ?, ?)",
-        [nama, email, no_hp, umur, topic_keluhan, true]
+        "INSERT INTO customers (nama, email, no_hp, umur, topic, room_name, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [nama, email, no_hp, umur, topic, roomName, true]
       );
+      subscribeToRoom(roomName); // subs ke rum baru
+      await db.end();
       await db.end();
       return res
         .status(201)
-        .json({ message: "Keluhan baru berhasil dicatat!" });
+        .json({ message: "Keluhan dicatat!", room_name: roomName });
     }
 
     // if verified false, req otp
     const otp = generateOTP();
     otpStore.set(email, {
       otp,
-      data: { nama, email, no_hp, umur, topic_keluhan },
+      data: { nama, email, no_hp, umur, topic },
     });
 
     const mailOptions = {
@@ -86,27 +89,43 @@ app.post("/verify-otp", async (req, res) => {
     return res.status(401).json({ message: "OTP salah atau kadaluarsa" });
   }
 
-  const { nama, no_hp, umur, topic_keluhan } = storedData.data;
+  const { nama, no_hp, umur, topic } = storedData.data;
+  const roomName = `room_${Date.now()}`; // ini nanti untuk room chat
 
   try {
     const db = await getConnection();
     // masukan entri baru dengan is_verfied true
     await db.query(
-      "INSERT INTO customers (nama, email, no_hp, umur, topic_keluhan, is_verified) VALUES (?, ?, ?, ?, ?, ?)",
-      [nama, email, no_hp, umur, topic_keluhan, true]
+      "INSERT INTO customers (nama, email, no_hp, umur, topic, room_name, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [nama, email, no_hp, umur, topic, roomName, true]
     );
 
+    subscribeToRoom(roomName); // subs ke rum baru
     otpStore.delete(email);
     await db.end();
 
     res.status(201).json({
       message: "Berhasil simpan dan verfikasi",
-      data: { nama, email, no_hp, umur, topic_keluhan },
+      data: { nama, email, no_hp, umur, topic, room_name: roomName },
     });
   } catch (error) {
     console.error("Gagal Simpan data:", error);
     res.status(500).json({ message: "Gagal Simpan data" });
   }
+});
+
+// Kirim pesan
+app.post("/message", (req, res) => {
+  const { room_name, message, sender_type, sender_id } = req.body;
+  publishToRoom(room_name, { room_name, message, sender_type, sender_id });
+  res.status(201).json({ message: "Pesan dikirim" });
+});
+
+// Ambil pesan
+app.get("/messages/:room_name", (req, res) => {
+  const { room_name } = req.params;
+  const messages = getMessages(room_name);
+  res.status(200).json({ data: messages });
 });
 
 app.get("/customers", async (req, res) => {
