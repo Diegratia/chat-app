@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat Room</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      #chat-container {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      #messages {
+        border: 1px solid #ccc;
+        padding: 10px;
+        height: 300px;
+        overflow-y: auto;
+        margin-bottom: 10px;
+      }
+      .message {
+        margin: 5px 0;
+        padding: 5px;
+        background: #f0f0f0;
+        border-radius: 3px;
+      }
+      #message-form {
+        display: flex;
+        gap: 10px;
+      }
+      #message-input {
+        flex-grow: 1;
+        padding: 5px;
+      }
+      button {
+        padding: 5px 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="chat-container">
+      <h2>Chat Room</h2>
+      <label for="roomName">Room Name: </label>
+      <input type="text" id="roomName" value="room_1744345226159" readonly />
+      <br /><br />
+      <label for="senderType">Sender Type: </label>
+      <select id="senderType">
+        <option value="customer">Customer</option>
+        <option value="cs">CS</option>
+      </select>
+      <div id="messages"></div>
+      <form id="message-form">
+        <input
+          type="text"
+          id="message-input"
+          placeholder="Ketik pesan..."
+          required
+        />
+        <button type="submit">Kirim</button>
+      </form>
+    </div>
+
+    <script>
+      const roomName = document.getElementById("roomName").value;
+      const senderTypeSelect = document.getElementById("senderType");
+      const messagesDiv = document.getElementById("messages");
+      const messageForm = document.getElementById("message-form");
+      const messageInput = document.getElementById("message-input");
+
+      // Ambil pesan dari server
+      function fetchMessages() {
+        fetch(`/messages/${roomName}`)
+          .then((response) => response.json())
+          .then((data) => {
+            messagesDiv.innerHTML = ""; // Kosongkan dulu
+            data.data.forEach((msg) => {
+              const p = document.createElement("p");
+              p.className = "message";
+              p.textContent = `${msg.sender_type} ${msg.sender_id}: ${msg.message}`;
+              messagesDiv.appendChild(p);
+            });
+            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Scroll ke bawah
+          })
+          .catch((error) => console.error("Error fetching messages:", error));
+      }
+
+      // Kirim pesan ke server
+      messageForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const message = messageInput.value;
+        const senderType = senderTypeSelect.value;
+        const senderId = senderType === "customer" ? 1 : 101; // Contoh ID
+
+        fetch("/message", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            room_name: roomName,
+            message: message,
+            sender_type: senderType,
+            sender_id: senderId,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log(data.message); // "Pesan dikirim"
+            messageInput.value = ""; // Kosongkan input
+            fetchMessages(); // Refresh pesan
+          })
+          .catch((error) => console.error("Error sending message:", error));
+      });
+
+      // Polling untuk refresh pesan setiap detik
+      setInterval(fetchMessages, 1000);
+      fetchMessages(); // Load pertama kali
+    </script>
+  </body>
+</html>

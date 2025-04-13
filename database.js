@@ -1,6 +1,9 @@
 const mysql = require("mysql2/promise");
 const { dbConfig } = require("./config.js");
 
+const globalpooldb = {
+  db: null,
+};
 async function initializeDatabase() {
   try {
     const connection = await mysql.createConnection({
@@ -44,4 +47,13 @@ async function getConnection() {
   return await mysql.createConnection(dbConfig);
 }
 
-module.exports = { initializeDatabase, getConnection };
+async function initialPool() {
+  console.log("instances");
+  globalpooldb.db = await mysql.createConnection(dbConfig);
+}
+module.exports = {
+  initializeDatabase,
+  getConnection,
+  globalpooldb,
+  initialPool,
+};

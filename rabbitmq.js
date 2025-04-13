@@ -10,6 +10,7 @@ function connectRabbitMQ() {
       connection.createChannel(function (error1, ch) {
         if (error1) return reject(error1);
         channel = ch;
+        // console.log(ch);
         console.log("Connected to RabbitMQ");
         resolve();
       });
@@ -28,6 +29,8 @@ function subscribeToRoom(roomName) {
     roomName,
     function (msg) {
       const message = JSON.parse(msg.content.toString());
+      console.log(message);
+
       // Ambil pesan dari queue dan simpan ke messageBuffer berdasarkan roomName
       if (!messageBuffer.has(roomName)) messageBuffer.set(roomName, []);
       messageBuffer.get(roomName).push(message);
@@ -48,8 +51,8 @@ function publishToRoom(roomName, message) {
   channel.sendToQueue(roomName, Buffer.from(JSON.stringify(message)));
   // subskrep lagi
   if (!messageBuffer.has(roomName)) {
-    console.log(`Auto subskrep ke ${roomName}`);
-    subscribeToRoom(roomName);
+    // console.log(`Auto subskrep ke ${roomName}`);
+    // subscribeToRoom(roomName);
   }
 }
 
