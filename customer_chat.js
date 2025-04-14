@@ -13,12 +13,7 @@ const {
 } = require("./rabbitmq");
 const { port, emailConfig } = require("./config");
 const nodemailer = require("nodemailer");
-/*************  ✨ Windsurf Command ⭐  *************/
-/**
- * Starts an initial chat with a customer by asking them if they have a question or concern.
- * @returns {Promise<void>}
- * 
-/*******  be899d13-d830-4dda-90b8-01ede8952312  *******/
+
 connectRabbitMQ();
 initialPool();
 initialChat();
