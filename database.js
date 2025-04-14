@@ -16,7 +16,7 @@ async function initializeDatabase() {
     await connection.end();
 
     const db = await mysql.createConnection(dbConfig);
-    // Buat tabel cs dulu
+    //cs
     await db.query(`
       CREATE TABLE IF NOT EXISTS cs (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -25,7 +25,7 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    // Lalu tabel rooms (referensi cs)
+    //rooms
     await db.query(`
       CREATE TABLE IF NOT EXISTS rooms (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -34,7 +34,7 @@ async function initializeDatabase() {
         FOREIGN KEY (cs_id) REFERENCES cs(id)
       )
     `);
-    // Terakhir tabel customers (referensi rooms)
+    // customers
     await db.query(`
       CREATE TABLE IF NOT EXISTS customers (
         id INT AUTO_INCREMENT PRIMARY KEY,

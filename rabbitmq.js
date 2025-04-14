@@ -1,5 +1,6 @@
 const amqp = require("amqplib/callback_api");
 
+let displayedMessages = new Set();
 let channel;
 
 function connectRabbitMQ() {
@@ -16,101 +17,122 @@ function connectRabbitMQ() {
   });
 }
 
+//subskrep dan konsum tapi nack, kalau dipostman perlu getmessage
 function subscribeToRoom(roomId) {
   if (!channel) throw new Error("RabbitMQ channel not initialized");
   const queueName = `room_${roomId}`;
-
-  // Buat queue durable
   channel.assertQueue(queueName, { durable: true });
-  // Consume pesan dari queue
   channel.consume(
     queueName,
     function (msg) {
-      const message = JSON.parse(msg.content.toString());
-      console.log(`Received in room_${roomId}:`, message);
-      // Logging untuk notifikasi real-time
+      if (msg !== null) {
+        try {
+          const message = JSON.parse(msg.content.toString());
+          const msgKey = `${message.sender_type}:${message.message}:${message.sender_id}`;
+          if (!displayedMessages.has(msgKey)) {
+            console.log(`${message.sender_type}: ${message.message}`);
+            displayedMessages.add(msgKey);
+          }
+          channel.nack(msg, false, true); // Kembalikan pesan ke queue
+        } catch (e) {
+          console.error("[subscribeToRoom] Gagal parse pesan:", e);
+          channel.nack(msg, false, false);
+        }
+      }
     },
-    { noAck: true } // Auto-ack untuk logging
+    { noAck: false }
   );
 }
 
 function publishToRoom(roomId, message) {
   if (!channel) throw new Error("RabbitMQ channel not initialized");
   const queueName = `room_${roomId}`;
-  // Pastikan queue ada
+  //queue durable
   channel.assertQueue(queueName, { durable: true });
-  // Kirim langsung ke queue
-  channel.sendToQueue(
-    queueName,
-    Buffer.from(JSON.stringify(message)),
-    { persistent: true } // Pesan disimpan di queue durable
-  );
-}
-
-function getMessages(roomId) {
-  return new Promise((resolve) => {
-    if (!channel) throw new Error("RabbitMQ channel not initialized");
-    const queueName = `room_${roomId}`;
-    const messages = [];
-
-    // Pastikan queue ada
-    channel.assertQueue(queueName, { durable: true }, function (error2, q) {
-      if (error2) {
-        console.error("Gagal akses queue:", error2);
-        resolve(messages);
-        return;
-      }
-
-      // Consume pesan dari queue, tanpa hapus
-      channel.consume(
-        queueName,
-        function (msg) {
-          if (msg !== null) {
-            const message = JSON.parse(msg.content.toString());
-            messages.push(message);
-          }
-        },
-        { noAck: true }, // Pesan tetap di queue
-        function () {
-          // Tunggu sebentar, lalu kembalikan pesan
-          setTimeout(() => {
-            resolve(messages);
-          }, 100); // Delay untuk kumpulkan pesan
-        }
-      );
-    });
+  // kirim langsung ke queue
+  channel.sendToQueue(queueName, Buffer.from(JSON.stringify(message)), {
+    persistent: true,
   });
 }
+// function getMessages(roomId) {
+//   return new Promise((resolve, reject) => {
+//     if (!channel) return reject(new Error("RabbitMQ channel not initialized"));
+//     const queueName = `room_${roomId}`;
+//     const messages = [];
+//     const toNack = [];
+//     let consumerTag = null;
+
+//     channel.assertQueue(queueName, { durable: true }, function (error2, q) {
+//       if (error2) {
+//         console.error("[getMessages] Gagal akses queue:", error2);
+//         return resolve(messages);
+//       }
+
+//       const messageCount = q.messageCount;
+//       if (messageCount === 0) {
+//         return resolve(messages);
+//       }
+
+//       channel.consume(
+//         queueName,
+//         function (msg) {
+//           if (msg !== null) {
+//             try {
+//               const message = JSON.parse(msg.content.toString());
+//               messages.push(message);
+//               toNack.push(msg);
+//               if (messages.length >= messageCount) {
+//                 channel.cancel(consumerTag, () => {
+//                   toNack.forEach((m) => channel.nack(m, false, true));
+//                   resolve(messages);
+//                 });
+//               }
+//             } catch (e) {
+//               console.error("[getMessages] Gagal parse pesan:", e);
+//               channel.nack(msg, false, true);
+//             }
+//           }
+//         },
+//         { noAck: false },
+//         function (err, ok) {
+//           if (err) {
+//             console.error("[getMessages] Gagal consume:", err);
+//             return reject(err);
+//           }
+//           consumerTag = ok.consumerTag;
+//         }
+//       );
+//     });
+//   });
+// }
 
 function finishRoom(roomId) {
   return new Promise((resolve, reject) => {
     if (!channel) return reject(new Error("RabbitMQ channel not initialized"));
     const queueName = `room_${roomId}`;
 
-    // Pastikan queue ada
     channel.assertQueue(queueName, { durable: true }, function (error2, q) {
       if (error2) {
         console.error("Gagal akses queue:", error2);
         return reject(error2);
       }
 
-      // Consume semua pesan dan ack
       channel.consume(
         queueName,
         function (msg) {
           if (msg !== null) {
-            channel.ack(msg); // Ack pesan
+            channel.ack(msg);
           }
         },
-        { noAck: false }, // Manual ack
+        { noAck: false },
         function () {
-          // Setelah consume, hapus queue
           channel.deleteQueue(queueName, function (error3) {
             if (error3) {
               console.error("Gagal hapus queue:", error3);
               return reject(error3);
             }
             console.log(`Queue ${queueName} dihapus`);
+            displayedMessages.clear(); // Bersihkan filter
             resolve();
           });
         }
@@ -123,7 +145,7 @@ module.exports = {
   connectRabbitMQ,
   subscribeToRoom,
   publishToRoom,
-  getMessages,
+  // getMessages,
   finishRoom,
 };
 

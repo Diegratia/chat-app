@@ -9,7 +9,7 @@ const {
   connectRabbitMQ,
   subscribeToRoom,
   publishToRoom,
-  getMessages,
+  finishRoom,
 } = require("./rabbitmq");
 const { port, emailConfig } = require("./config");
 const nodemailer = require("nodemailer");
@@ -17,14 +17,13 @@ const nodemailer = require("nodemailer");
 connectRabbitMQ();
 initialPool();
 initialChat();
-function generateOTP() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
+
 const transporter = nodemailer.createTransport(emailConfig);
 
-temp_room = {};
-current_room = "";
-otpStore = new Map();
+let temp_room = {};
+let current_room = "";
+let otpStore = new Map();
+
 async function initialChat() {
   inquirer
     .prompt([
@@ -37,17 +36,15 @@ async function initialChat() {
     ])
     .then((answers) => {
       console.log("You asked: " + answers.ask);
-      if (answers.ask == "Ya") {
-        // Isi Bio data
-        // console.log(globalpooldb.db);
+      if (answers.ask === "Ya") {
         bioData();
       } else {
         initialChat();
       }
-      // You can add code here to handle the customer's question or concern
     });
 }
-function bioData() {
+
+async function bioData() {
   inquirer
     .prompt([
       {
@@ -58,7 +55,7 @@ function bioData() {
       {
         name: "email",
         message: "Email customer?",
-        default: "pamadix978@mobilesm.com",
+        default: "tacili1244@ptiong.com",
       },
       {
         name: "phone",
@@ -82,31 +79,32 @@ function bioData() {
         "SELECT is_verified FROM customers WHERE email = ? AND is_verified = TRUE LIMIT 1",
         [email]
       );
-      const roomName = `chat_ticket_room_${Date.now()}`;
+
       if (verifiedCheck.length > 0) {
-        current_room = roomName;
-        temp_room[roomName] = {
-          room: roomName,
+        console.log("Email sudah terverifikasi, membuat room baru...");
+        const [result] = await globalpooldb.db.query(
+          "INSERT INTO rooms () VALUES ()"
+        );
+        const roomId = result.insertId;
+        current_room = roomId;
+        temp_room[roomId] = {
+          room: roomId,
           data: answers,
           chat_history: [],
           otp: "",
         };
         await globalpooldb.db.query(
-          "INSERT INTO rooms (room_name) VALUES (?)",
-          [roomName]
+          "INSERT INTO customers (nama, email, no_hp, umur, topic, room_id, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          [name, email, phone, umur, topic, roomId, true]
         );
-        await globalpooldb.db.query(
-          "INSERT INTO customers (nama, email, no_hp, umur, topic, room_name, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          [name, email, phone, 0, topic, roomName, true]
-        );
-        subscribeToRoom(roomName);
-        // await globalpooldb.end();
-        console.log("\n create new chat");
+        subscribeToRoom(roomId);
+        console.log(`\nCreated new chat room: room_${roomId}`);
+        conversation_chat();
+        return;
       }
 
       const otp = 12345;
       // const otp = generateOTP();
-      temp_room[roomName].otp = otp;
       otpStore.set(email, { otp, data: { name, email, phone, umur, topic } });
 
       const mailOptions = {
@@ -131,40 +129,70 @@ function verifiedOtpCheck(email = "") {
         default: "",
       },
     ])
-    .then((answers) => {
-      // otpStore
-      console.log(temp_room);
-      if (temp_room[current_room].otp != answers.otp) {
-        var em = temp_room[current_room].data.email;
-        verifiedOtpCheck(em);
+    .then(async (answers) => {
+      if (otpStore.get(email)?.otp != answers.otp) {
+        console.log("OTP salah, coba lagi.");
+        verifiedOtpCheck(email);
         return;
       }
-      conversation_chat();
 
-      console.log("Start Chat:");
-      // console.info("Answer:", answers.faveReptile);
+      const { name, email, phone, umur, topic } = otpStore.get(email).data;
+      const [result] = await globalpooldb.db.query(
+        "INSERT INTO rooms () VALUES ()"
+      );
+      const roomId = result.insertId;
+      current_room = roomId;
+      temp_room[roomId] = {
+        room: roomId,
+        data: { name, email, phone, umur, topic },
+        chat_history: [],
+        otp: answers.otp,
+      };
+      await globalpooldb.db.query(
+        "INSERT INTO customers (nama, email, no_hp, umur, topic, room_id, is_verified) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [name, email, phone, umur, topic, roomId, true]
+      );
+      subscribeToRoom(roomId);
+      console.log(`\nCreated new chat room: room_${roomId}`);
+      conversation_chat();
     });
 }
 
-function conversation_chat() {
-  inquirer
-    .prompt([
-      {
-        name: "chat",
-        message: ``,
-        default: "",
-      },
-    ])
-    .then((answers) => {
-      // otpStore
-      if (answers.chat == "i") {
-        console.info(temp_room[current_room]);
+async function conversation_chat() {
+  try {
+    inquirer
+      .prompt([
+        {
+          name: "chat",
+          message: ``,
+          default: "",
+        },
+      ])
+      .then(async (answers) => {
+        if (answers.chat == "i") {
+          console.info(temp_room[current_room]);
+          conversation_chat();
+          return;
+        }
+        if (answers.chat === "q") {
+          await finishRoom(current_room);
+          console.log("Chat selesai.");
+          initialChat();
+          return;
+        }
+        if (answers.chat) {
+          const message = {
+            room_id: current_room,
+            message: answers.chat,
+            sender_type: "customer",
+            sender_id: temp_room[current_room].data.email,
+          };
+          publishToRoom(current_room, message);
+          temp_room[current_room].chat_history.push(message);
+        }
         conversation_chat();
-        return;
-      }
-
-      publishToRoom(current_room, answers.chat);
-      conversation_chat();
-      // console.log()
-    });
+      });
+  } catch (error) {
+    console.error(error);
+  }
 }

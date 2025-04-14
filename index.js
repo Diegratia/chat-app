@@ -6,7 +6,7 @@ const {
   connectRabbitMQ,
   subscribeToRoom,
   publishToRoom,
-  getMessages,
+  // getMessages,
   finishRoom,
 } = require("./rabbitmq");
 const app = express();
@@ -20,7 +20,7 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// Endpoint untuk buat CS
+//cs
 app.post("/cs", async (req, res) => {
   const { nama, email } = req.body;
   if (!nama || !email) {
@@ -43,7 +43,7 @@ app.post("/cs", async (req, res) => {
   }
 });
 
-// Endpoint untuk klaim room
+// kalim room
 app.post("/claim-room", async (req, res) => {
   const { cs_id, room_id } = req.body;
   if (!cs_id || !room_id) {
@@ -81,6 +81,7 @@ app.post("/claim-room", async (req, res) => {
   }
 });
 
+//customer
 app.post("/customer", async (req, res) => {
   const { nama, email, no_hp, umur, topic } = req.body;
 
@@ -128,6 +129,7 @@ app.post("/customer", async (req, res) => {
   }
 });
 
+//verif otp
 app.post("/verify-otp", async (req, res) => {
   const { email, otp } = req.body;
 
@@ -160,6 +162,7 @@ app.post("/verify-otp", async (req, res) => {
   }
 });
 
+// get customer
 app.get("/customers", async (req, res) => {
   try {
     const db = await getConnection();
@@ -172,6 +175,7 @@ app.get("/customers", async (req, res) => {
   }
 });
 
+//send message
 app.post("/message", async (req, res) => {
   const { room_id, message, sender_type, sender_id } = req.body;
   if (!room_id || !message) {
@@ -186,17 +190,19 @@ app.post("/message", async (req, res) => {
   res.status(201).json({ message: "Pesan dikirim" });
 });
 
-app.get("/messages/:room_id", async (req, res) => {
-  const { room_id } = req.params;
-  try {
-    const messages = await getMessages(parseInt(room_id));
-    res.status(200).json({ data: messages });
-  } catch (error) {
-    console.error("Gagal ambil pesan:", error);
-    res.status(500).json({ message: "Gagal ambil pesan" });
-  }
-});
+//get message
+// app.get("/messages/:room_id", async (req, res) => {
+//   const { room_id } = req.params;
+//   try {
+//     const messages = await getMessages(parseInt(room_id));
+//     res.status(200).json({ data: messages });
+//   } catch (error) {
+//     console.error("Gagal ambil pesan:", error);
+//     res.status(500).json({ message: "Gagal ambil pesan" });
+//   }
+// });
 
+//send message
 app.post("/send", async (req, res) => {
   const { room_id, message, sender_type, sender_id } = req.body;
   if (!room_id || !message) {
@@ -215,6 +221,7 @@ app.post("/send", async (req, res) => {
   });
 });
 
+//finish room
 app.post("/finish-room", async (req, res) => {
   const { room_id, cs_id } = req.body;
   if (!room_id || !cs_id) {
