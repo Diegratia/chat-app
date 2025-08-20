@@ -19,8 +19,16 @@ async function initializeDatabase() {
         email VARCHAR(255) NOT NULL, 
         no_hp VARCHAR(20) NOT NULL,
         umur INT NOT NULL,
-        topic_keluhan TEXT NOT NULL,
+        topic TEXT NOT NULL, 
+        room_name VARCHAR(50),
         is_verified BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS rooms (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        room_name VARCHAR(50) UNIQUE NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
