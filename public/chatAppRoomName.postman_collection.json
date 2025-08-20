@@ -1,0 +1,449 @@
+{
+  "info": {
+    "name": "Chat App with Room ID and CS",
+    "description": "Tes untuk aplikasi chat dengan durable queue langsung, tanpa exchange, non-ack di getMessages, ack saat finish room, untuk banyak room",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create CS 1",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nama\": \"Andi\",\n  \"email\": \"andi@cs.com\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/cs",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["cs"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Create CS 2",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nama\": \"Siti\",\n  \"email\": \"siti@cs.com\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/cs",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["cs"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Create Customer 1 (Room 1)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nama\": \"Budi\",\n  \"email\": \"budi@example.com\",\n  \"no_hp\": \"08123456789\",\n  \"umur\": 25,\n  \"topic\": \"Layanan lambat\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/customer",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["customer"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Verify OTP (Room 1)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"budi@example.com\",\n  \"otp\": \"{{otp}}\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/verify-otp",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["verify-otp"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Create Customer 2 (Room 2)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nama\": \"Ani\",\n  \"email\": \"ani@example.com\",\n  \"no_hp\": \"08198765432\",\n  \"umur\": 30,\n  \"topic\": \"Produk rusak\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/customer",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["customer"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Verify OTP (Room 2)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"ani@example.com\",\n  \"otp\": \"{{otp}}\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/verify-otp",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["verify-otp"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Claim Room 1",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cs_id\": 1,\n  \"room_id\": {{room_id_1}}\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/claim-room",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["claim-room"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Claim Room 2",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cs_id\": 2,\n  \"room_id\": {{room_id_2}}\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/claim-room",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["claim-room"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Send Message CS (Room 1)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"room_id\": {{room_id_1}},\n  \"message\": \"Halo, ada masalah apa?\",\n  \"sender_type\": \"cs\",\n  \"sender_id\": 1\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/message",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["message"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Send Message Customer (Room 1)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"room_id\": {{room_id_1}},\n  \"message\": \"Layanan lambat sekali\",\n  \"sender_type\": \"customer\",\n  \"sender_id\": 1\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/send",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["send"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Send Message CS (Room 2)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"room_id\": {{room_id_2}},\n  \"message\": \"Halo, apa keluhannya?\",\n  \"sender_type\": \"cs\",\n  \"sender_id\": 2\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/message",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["message"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Send Message Customer (Room 2)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"room_id\": {{room_id_2}},\n  \"message\": \"Produk rusak saat sampai\",\n  \"sender_type\": \"customer\",\n  \"sender_id\": 2\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/send",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["send"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Messages (Room 1 - CS)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/messages/{{room_id_1}}",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["messages", "{{room_id_1}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Messages (Room 1 - Customer)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/messages/{{room_id_1}}",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["messages", "{{room_id_1}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Messages (Room 2 - CS)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/messages/{{room_id_2}}",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["messages", "{{room_id_2}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Messages (Room 2 - Customer)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/messages/{{room_id_2}}",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["messages", "{{room_id_2}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Finish Room 1",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cs_id\": 1,\n  \"room_id\": {{room_id_1}}\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/finish-room",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["finish-room"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Finish Room 2",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cs_id\": 2,\n  \"room_id\": {{room_id_2}}\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/finish-room",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["finish-room"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Messages After Finish (Room 1)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/messages/{{room_id_1}}",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["messages", "{{room_id_1}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get All Customers",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/customers",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["customers"]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "room_id_1",
+      "value": "1"
+    },
+    {
+      "key": "room_id_2",
+      "value": "2"
+    },
+    {
+      "key": "otp",
+      "value": "123456"
+    }
+  ]
+}
